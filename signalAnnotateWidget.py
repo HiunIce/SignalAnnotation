@@ -84,7 +84,6 @@ if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
     win = signalAnnotateWidget()
-    import utils.medicalFileIO as mio
     path = "testdata.mat"
     win.setFile(path)
     #line = win.vlines(200, 0, 200, colors="c", linestyles="dashed")
