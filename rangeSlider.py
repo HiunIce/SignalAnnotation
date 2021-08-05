@@ -8,6 +8,7 @@ from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QPen, QBrush, QFont
 class RangeSlider(QWidget):
     lowValueChanged = pyqtSignal(float)
     highValueChanged = pyqtSignal(float)
+    valueChanged = pyqtSignal(float, float)
     _handleWidth = 8
     _handleHeight = 20
 
@@ -178,9 +179,11 @@ class RangeSlider(QWidget):
         if (self._secondValue < self._minimum):
             self.setSecondValue(self._minimum)
 
-    def setFirstValue(self, low):
+    def setFirstValue(self, low, blockSignal=False):
         if low == self._firstValue:
             return
+        if blockSignal:
+            self.blockSignals(True)
         if low < self._minimum:
             low = self._minimum
             if (self._flag_breakThroughOk and self._flag_rangeHandlePressed):
@@ -189,11 +192,17 @@ class RangeSlider(QWidget):
         self._firstValue = low
 
         self.lowValueChanged.emit(self._firstValue)
+        self.valueChanged.emit(self._firstValue, self._secondValue)
         self.update()
+        if blockSignal:
+            self.blockSignals(False)
 
-    def setSecondValue(self, high):
+    def setSecondValue(self, high, blockSignal=False):
         if high == self._secondValue:
             return
+
+        if blockSignal:
+            self.blockSignals(True)
         if high > self._maximum:
             high = self._maximum
             if (self._flag_breakThroughOk and self._flag_rangeHandlePressed):
@@ -202,8 +211,10 @@ class RangeSlider(QWidget):
         self._secondValue = high
 
         self.highValueChanged.emit(self._secondValue)
+        self.valueChanged.emit(self._firstValue, self._secondValue)
         self.update()
-
+        if blockSignal:
+            self.blockSignals(False)
 
 if __name__ == "__main__":
     import sys
