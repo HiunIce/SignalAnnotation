@@ -85,9 +85,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     win = signalAnnotateWidget()
     import utils.medicalFileIO as mio
-    path = "C:/dataset/paiSignal/Cancellous bone/Cancellous bone_1.mat"
+    path = "testdata.mat"
     win.setFile(path)
-    line = win.vlines(200, 0, 200, colors="c", linestyles="dashed")
+    #line = win.vlines(200, 0, 200, colors="c", linestyles="dashed")
     win.setSingalVisiblity(-1, True)
     # seg = line.get_segments()
     # line.set_segments([[[300, 0], [300,200]]])
