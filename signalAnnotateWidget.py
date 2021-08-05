@@ -1,13 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 
+import cv2
 import numpy as np
 from PyQt5.QtWidgets import QWidget, QPushButton, QApplication
 from PyQt5.QtCore import QRect, pyqtSignal
-from PyQt5.QtGui import QPaintEvent
+from PyQt5.QtGui import QPaintEvent, QIcon
 import scipy.io as scio
 #####
 from matplotQt import PltCanvas
+from rangeSlider import RangeSlider
 #####
 
 class signalAnnotateWidget(QWidget):
@@ -83,17 +85,44 @@ class signalAnnotateWidget(QWidget):
     def getAnnotation(self):
         return self.target_name
 
+class oneDimLabelSlider(QWidget):
+    def __init__(self, parent=None):
+        QWidget.__init__(self, parent=parent)
+        root = os.path.dirname(__file__) + "/"
+
+        self.btn_add = QPushButton(self)
+        self.btn_add.setIcon(QIcon(root+'/icons/icon_addtag.png'))
+        self.btn_add.setFlat(True)
+
+        self.btn_rmv = QPushButton(self)
+        self.btn_rmv.setIcon(QIcon(root+'/icons/icon_delete.png'))
+        self.btn_rmv.setFlat(True)
 
 
-if __name__ == "__main__":
+    def resizeEvent(self, a0) -> None:
+        pass
+
+    def paintEvent(self, a0) -> None:
+        pass
+
+
+
+def testMain():
     import sys
     app = QApplication(sys.argv)
     win = signalAnnotateWidget()
     path = "testdata.mat"
     win.setFile(path)
-    #line = win.vlines(200, 0, 200, colors="c", linestyles="dashed")
     win.setSingalVisiblity(-1, True)
-    # seg = line.get_segments()
-    # line.set_segments([[[300, 0], [300,200]]])
     win.show()
     sys.exit(app.exec_())
+
+def testHeader():
+    import sys
+    app = QApplication(sys.argv)
+    win = oneDimLabelSlider()
+    win.show()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    testMain()
