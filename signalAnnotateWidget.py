@@ -5,7 +5,7 @@ import numpy as np
 from PyQt5.QtWidgets import QWidget, QPushButton, QApplication
 from PyQt5.QtCore import QRect, pyqtSignal
 from PyQt5.QtGui import QPaintEvent
-
+import scipy.io as scio
 #####
 from matplotQt import PltCanvas
 #####
@@ -32,7 +32,10 @@ class signalAnnotateWidget(QWidget):
             print("you shall input a file")
             return
         if self.readFunction is None:
-            from utils.medicalFileIO import mat2nparray
+            def mat2nparray(path):
+                data = scio.loadmat(path)
+                return data[list(data.keys())[-1]]
+
             self.readFunction = mat2nparray
         print(path)
         data = self.readFunction(path)
@@ -79,6 +82,8 @@ class signalAnnotateWidget(QWidget):
 
     def getAnnotation(self):
         return self.target_name
+
+
 
 if __name__ == "__main__":
     import sys
