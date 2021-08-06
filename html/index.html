@@ -35,7 +35,6 @@
                 document.getElementById('canves').innerHTML = '';
                 if (data[pic_id] === undefined){
                     data[pic_id] = [[START,END]];
-                    console.log('init');
                 }
                 s_id = data[pic_id].length;
                 data[pic_id].forEach((pair, id) => {
@@ -45,15 +44,18 @@
             }
             function change_pic() {
                 init();
-                document.getElementById('pic_img').src = `${prefix}${(pic_id).toString()}${suffix}`;
+                document.getElementById('pic_img').src = `${conf['prefix']}${(pic_id).toString()}${conf['suffix']}`;
                 document.getElementById('pic_id').innerHTML  = pic_id;
                 setTimeout(function(){update_canv();}, 10);
             }
             function update_canv(){
                 var ctx = document.getElementById("pic").getContext("2d");
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.beginPath();
                 var img = document.getElementById("pic_img");
-                ctx.drawImage(img, 0,0);
 
+                const x = parseInt(conf['offset_x']), y = parseInt(conf['offset_y']), l = parseInt(conf['rescale_x']), h = parseInt(conf['rescale_y']);
+                ctx.drawImage(img, parseInt(x) - (l-500)/2, y - (h-400)/2, l, h);
                 data[pic_id].forEach((pair, i) => {
                     draw_line(pair[0]*5, i);
                     draw_line(pair[1]*5, i);
@@ -62,7 +64,7 @@
             }
             function pic_exist(pic_id, callback) {
                 const img = new Image();
-                img.src = `${prefix}${(pic_id).toString()}${suffix}`;
+                img.src = `${conf['prefix']}${(pic_id).toString()}${conf['suffix']}`;
                 if (img.complete) {
                   callback(true);
                 } else {
@@ -80,9 +82,23 @@
     <body>
         <div>
             <label for="prefix">prefix:</label>
-             <input type="text" id="prefix" value="sig" size="2" onchange="path_mod()">
+             <input type="text" id="prefix" value="sig" size="2" onchange="config(this.id)">
             <label for="suffix">suffix:</label>
-             <input type="text" id="suffix" value=".jpg" size="2" onchange="path_mod()">
+             <input type="text" id="suffix" value=".jpg" size="2" onchange="config(this.id)">
+        </div>
+        <div>
+            <label>offset:</label>
+             <!-- <input type="text" id="offset_x" value="0" size="1" onchange="config(this.id)">
+             <input type="text" id="offset_y" value="0" size="1" onchange="config(this.id)">  -->
+             <input type="range" id="offset_x" value="0" min="-100" max="100" onchange="config(this.id)" oninput="config(this.id)">
+             <input type="range" id="offset_y" value="0" min="-100" max="100" onchange="config(this.id)" oninput="config(this.id)">
+         </div>
+         <div>
+            <label>rescale:</label>
+             <!-- <input type="text" id="rescale_x" value="500" size="1" onchange="config(this.id)">
+             <input type="text" id="rescale_y" value="400" size="1" onchange="config(this.id)"> -->
+              <input type="range" id="rescale_x" value="500" min="250" max="1000" onchange="config(this.id)" oninput="config(this.id)">
+             <input type="range" id="rescale_y" value="400" min="200" max="800" onchange="config(this.id)" oninput="config(this.id)">
         </div>
         <div>
             <canvas id="pic" width="500" height="400" ></canvas>
@@ -102,17 +118,31 @@
 
 <script type="text/javascript">
     var s_id = 0;
-    var data_str = localStorage.getItem("data");
+    const data_str = localStorage.getItem("data");
     var data = (data_str==null) ? new Map() : JSON.parse(data_str);
+    const conf_str = localStorage.getItem("conf");
+    var conf = (conf_str==null) ? new Map() : JSON.parse(conf_str);
     const START = 33;
     const END = 67;
-    var prefix = 'sig';
-    var suffix = '.jpg';
+    
 
-    function path_mod() {
-        prefix = document.getElementById('prefix').value;
-        suffix = document.getElementById('suffix').value;
+    function config(k) {
+        conf[k] = document.getElementById(k).value;
+        localStorage.setItem("conf", JSON.stringify(conf));
+        update_canv();
+    } 
+    function load_conf() {
+        if (conf.size === 0){
+            ['prefix', 'suffix', 'offset_x', 'offset_y', 'rescale_x', 'rescale_y'].forEach(k => {
+                conf[k] = document.getElementById(k).value;
+            })
+        } else {
+            for(var k in conf) {
+                document.getElementById(k).value = conf[k];
+            }
+        }
     }
+
 
     function add_slide(s = START, e = END, id = s_id) {
         var node=document.createElement("canvas");
@@ -133,10 +163,8 @@
           showMinorTicks: false,
           showToolTip: false,
           onChange: function(n_id, val) { 
-            // console.log("onChange:", const_id, n, val);
-            data[pic_id][const_id][n_id] = val;
+            data[pic_id][const_id][n_id] = val.toFixed(1);
             update_canv();
-            // console.log(data);
         },
           format: {decimals: 0, prefix: "", suffix: "%"},
           baseColor: {h: 207, s: 60, v: 100},
@@ -154,6 +182,7 @@
         var ctx = document.getElementById("pic").getContext("2d");
         var img = document.getElementById("pic_img");
         ctx.drawImage(img, 0,0);
+        load_conf();
         init();
     }
 
