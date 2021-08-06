@@ -1,15 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
+import datetime
+import json
 import os
 
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QListView
-from PyQt5.QtCore import QRect, pyqtSignal
+from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QListView, QFileDialog
+from PyQt5.QtCore import QRect, pyqtSignal, Qt
 from PyQt5.QtGui import QPaintEvent, QIcon, QStandardItemModel, QStandardItem
 import scipy.io as scio
 #####
 from matplotQt import PltCanvas
 from rangeSlider import RangeSlider
+from selectDrawer import SelectDrawer
 #####
 
 
@@ -27,15 +30,19 @@ class SignalAnnotateWidget(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
         self.__pltcanvas = PltCanvas(self)
+        self.__pltcanvas.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.plt = self.__pltcanvas.axes
         self.lineset = self.plt.lines
         self.collections = self.plt.collections
-        self.target_name = []
+        self.target_root = ''
+        self.target_name = 'data'
         self.target_data = None
         self.readFunction = None
         self.grabTools = OneDimLabelSlider(self)
         self.grabTools.rangeChanged.connect(self.setAnnotation)
         self.grabTools.currentDataChanged.connect(self.setAnnotation)
+        self.selector = SelectDrawer(self)
+        self.selector.dataSelected.connect(lambda file: self.setFile(self.target_root+"/"+file))
 
     def setReadFunction(self, fun):
         '''
@@ -43,9 +50,29 @@ class SignalAnnotateWidget(QWidget):
         '''
         self.readFunction = fun
 
+    def mouseDoubleClickEvent(self, a0) -> None:
+        dir_path = QFileDialog.getExistingDirectory(self, "choose directory", os.path.dirname(__file__))
+        if dir_path == "":
+            return
+        self.target_root = dir_path
+        dataname = []
+        for file in next(os.walk(dir_path))[2]:
+            if '.mat' in file:
+                dataname.append(file)
+        if len(dataname) == 0:
+            self.clearLine()
+        self.selector.setData(dataname)
+
+    def clearLine(self):
+        for l in self.lineset:
+            self.plt.remove(l)
+        self.plt.lines = []
+        self.__pltcanvas.draw()
+
     def setFile(self, path):
         if not os.path.isfile(path):
             print("you shall input a file")
+            self.clearLine()
             return
         if self.readFunction is None:
             def mat2nparray(path):
@@ -58,17 +85,23 @@ class SignalAnnotateWidget(QWidget):
     def setData(self, name, data):
         self.target_name = name
         self.target_data = data
+        #print('set data', self.target_name, self.target_data.shape)
+        self.grabTools.savePath = name+".json"
+        self.clearLine()
         for i in range(self.target_data.shape[0]):
             self.plot(self.target_data[i], lw=0.3)
-
+        min, max =  np.min(self.target_data), np.max(self.target_data)
+        diff = max - min
+        self.plt.axis([-20, self.target_data[i].shape[0]+20, min-diff*0.1, max+diff*0.1])
         self.collections.clear()
         self.vlines(0, 0, 300, linestyle='dotted', linewidth=5, color='b')
         self.vlines(0, 0, 300, linestyle='dotted', linewidth=5, color='c')
 
-        self.grabTools.blockSignals(True)
+        self.grabTools.slider.blockSignals(True)
         self.grabTools.slider.setValueRange(0, self.target_data.shape[1])
-        self.grabTools.blockSignals(False)
+        self.grabTools.slider.blockSignals(False)
         self.setVlineVisibility(-1, False)
+        self.__pltcanvas.draw()
 
     def plot(self, *args, **kwargs):
         self.plt.plot(*args, **kwargs)
@@ -104,6 +137,7 @@ class SignalAnnotateWidget(QWidget):
     def resizeEvent(self, a0) -> None:
         grabtoolHeiht = 80
         self.__pltcanvas.setGeometry(0, 0, self.width(), self.height()-grabtoolHeiht)
+        self.selector.setGeometry(self.__pltcanvas.geometry())
         self.grabTools.setGeometry(0, self.__pltcanvas.height(), self.width(), grabtoolHeiht)
 
     def getAnnotation(self):
@@ -117,25 +151,38 @@ class SignalAnnotateWidget(QWidget):
         self.__pltcanvas.draw()
 
 
+
 class OneDimLabelSlider(QWidget):
     rangeChanged = pyqtSignal(float, float)
     currentDataChanged = pyqtSignal(float, float)
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
-        root = os.path.dirname(__file__) + "/"
-
-        self.btn_add = QPushButton(self)
-        self.btn_add.setIcon(QIcon(root+'/icons/icon_addtag.png'))
-        self.btn_add.setFlat(True)
-        self.btn_add.clicked.connect(lambda : self.addData("data{}".format(self.listmodel.rowCount())))
-
-        self.btn_rmv = QPushButton(self)
-        self.btn_rmv.setIcon(QIcon(root+'/icons/icon_delete.png'))
-        self.btn_rmv.setFlat(True)
-        self.btn_rmv.clicked.connect(self.removeCurrentData)
+        self.__initBtns()
+        self.__initListView()
+        self.slider = RangeSlider(self)
+        self.slider.valueChanged.connect(self.rangeChangedSlot)
+        self.slider.middlePressOn = False
 
         self.dataset = dict()
+
+        self.addDataCallBack = None
+        self.savePath = "save_{}.json".format(datetime.datetime.now().strftime('%m%d_%M%S'))
+
+    def __initBtns(self):
+        root = os.path.dirname(__file__) + "/"
+
+        def makeBtn(icon, slot):
+            btn = QPushButton(self)
+            btn.setIcon(QIcon(root + '/icons/{}.png'.format(icon)))
+            btn.setFlat(True)
+            btn.clicked.connect(slot)
+            return btn
+        self.btn_add = makeBtn('icon_addtag', lambda : self.addData("data{}".format(self.listmodel.rowCount())))
+        self.btn_rmv = makeBtn('icon_delete', self.removeCurrentData)
+        self.btn_sav = makeBtn('icon_save', self.saveData)
+
+    def __initListView(self):
         self.listmodel = QStandardItemModel(self)
         self.listmodel.dataChanged.connect(self.dataChangedSlot)
         self.listview = QListView(self)
@@ -144,12 +191,6 @@ class OneDimLabelSlider(QWidget):
         self.listview.doubleClicked.connect(self._doubleClickItem)
         self.listview.setModel(self.listmodel)
         self.listview.selectionModel().currentChanged.connect(self.currentIndexChanged)
-
-        self.slider = RangeSlider(self)
-        self.slider.valueChanged.connect(self.rangeChangedSlot)
-        self.slider.middlePressOn = False
-
-        self.addDataCallBack = None
 
     def currentIndexChanged(self, now, before):
         self.currentDataChanged.emit(*self.dataset[now.data()])
@@ -170,16 +211,26 @@ class OneDimLabelSlider(QWidget):
 
     def removeCurrentData(self):
         data = self.listview.currentIndex().data()
-        self.dataset[data] = []
+        del self.dataset[data]
         self.listmodel.removeRow(self.listview.currentIndex().row())
+
+    def saveData(self):
+        jd = json.dumps(self.dataset, indent=4, ensure_ascii=False)
+        f = open(self.savePath, "w")
+        f.write(jd)
+        f.close()
+        print("save data")
+
 
     def resizeEvent(self, a0) -> None:
         ih, iw = 40, 40
         self.btn_add.setGeometry(0, 0, iw, ih)
         self.btn_rmv.setGeometry(self.btn_add.x()+self.btn_add.width(),
                                  0, iw, ih)
-        self.slider.setGeometry(self.btn_rmv.x()+self.btn_rmv.width(),
-                                0, self.width()-iw*2, ih)
+        self.btn_sav.setGeometry(self.btn_rmv.x()+self.btn_rmv.width(),
+                                 0, iw, ih)
+        self.slider.setGeometry(self.btn_sav.x()+self.btn_sav.width(),
+                                0, self.width()-iw*3, ih)
         self.listview.setGeometry(0,self.slider.y()+self.slider.height(),
                                   self.width(), self.height()-ih)
 
@@ -195,7 +246,7 @@ def testMain():
     import sys
     app = QApplication(sys.argv)
     win = SignalAnnotateWidget()
-    path = "testdata.mat"
+    path = "testdata/testdata.mat"
     win.setFile(path)
     win.setSingalVisiblity(-1, True)
     win.show()

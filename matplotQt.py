@@ -17,6 +17,9 @@ class PltCanvas(FigureCanvas):
     def compute_initial_figure(self):
         pass
 
+    def mousePressEvent(self, event):
+        print("!")
+
 def test_PltCanvas():
     import sys
     app = QApplication(sys.argv)
