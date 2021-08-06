@@ -21,6 +21,8 @@ a widget like this
 +- [[[[[double slider]]]]]
 listview[name][name][name][name][name]
 '''
+
+
 class SignalAnnotateWidget(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
@@ -32,11 +34,12 @@ class SignalAnnotateWidget(QWidget):
         self.target_data = None
         self.readFunction = None
         self.grabTools = OneDimLabelSlider(self)
-        self.grabTools.valueChanged.connect(self.setAnnotation)
+        self.grabTools.rangeChanged.connect(self.setAnnotation)
+        self.grabTools.currentDataChanged.connect(self.setAnnotation)
 
     def setReadFunction(self, fun):
         '''
-        try to make it as a clear widget, but not a reader
+        try to make it as a clear widget
         '''
         self.readFunction = fun
 
@@ -48,7 +51,6 @@ class SignalAnnotateWidget(QWidget):
             def mat2nparray(path):
                 data = scio.loadmat(path)
                 return data[list(data.keys())[-1]]
-
             self.readFunction = mat2nparray
         data = self.readFunction(path)
         self.setData(os.path.splitext(path)[0], data)
@@ -60,21 +62,19 @@ class SignalAnnotateWidget(QWidget):
             self.plot(self.target_data[i], lw=0.3)
 
         self.collections.clear()
-        self.vlines(0, 0, 300, linestyle='dotted', linewidth=10, color='b')
-        self.vlines(0, 0, 300, linestyle='dotted', linewidth=10, color='c')
+        self.vlines(0, 0, 300, linestyle='dotted', linewidth=5, color='b')
+        self.vlines(0, 0, 300, linestyle='dotted', linewidth=5, color='c')
 
         self.grabTools.blockSignals(True)
-        print(np.min(self.target_data), np.max(self.target_data))
         self.grabTools.slider.setValueRange(0, self.target_data.shape[1])
         self.grabTools.blockSignals(False)
-        #self.setVlineVisibility(-1, False)
+        self.setVlineVisibility(-1, False)
 
     def plot(self, *args, **kwargs):
         self.plt.plot(*args, **kwargs)
 
     def vlines(self, *args, **kwargs):
         line = self.plt.vlines(*args, **kwargs)
-        print(line)
         line.set_segments([[[300, 0], [300, 200]]])
 
     def setLineWidth(self, lw):
@@ -96,7 +96,7 @@ class SignalAnnotateWidget(QWidget):
                 obj.set_visible(v)
         else:
             for i in idx:
-                obj.set_visible(v)
+                obj[i].set_visible(v)
 
     def paintEvent(self, a0: QPaintEvent) -> None:
         pass
@@ -115,11 +115,12 @@ class SignalAnnotateWidget(QWidget):
         self.collections[0].set_segments([[[low, 0], [low, 300]]])
         self.collections[1].set_segments([[[high, 0], [high, 300]]])
         self.__pltcanvas.draw()
-        #v[1] = [[[high, 0],[high, 300]]]
 
 
 class OneDimLabelSlider(QWidget):
-    valueChanged = pyqtSignal(float, float)
+    rangeChanged = pyqtSignal(float, float)
+    currentDataChanged = pyqtSignal(float, float)
+
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
         root = os.path.dirname(__file__) + "/"
@@ -134,32 +135,38 @@ class OneDimLabelSlider(QWidget):
         self.btn_rmv.setFlat(True)
         self.btn_rmv.clicked.connect(self.removeCurrentData)
 
-
         self.dataset = dict()
         self.listmodel = QStandardItemModel(self)
+        self.listmodel.dataChanged.connect(self.dataChangedSlot)
         self.listview = QListView(self)
         self.listview.setFlow(QListView.LeftToRight)
         #self.listview.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.listview.doubleClicked.connect(self._doubleClickItem)
-
-        # testdata = ['name1', 'name2', 'name3', 'name4','name5', 'name6']
-        # for data in testdata:
-        #     self.addData(data)
-
         self.listview.setModel(self.listmodel)
+        self.listview.selectionModel().currentChanged.connect(self.currentIndexChanged)
 
         self.slider = RangeSlider(self)
-        self.slider.valueChanged.connect(self.valueChangedSlot)
+        self.slider.valueChanged.connect(self.rangeChangedSlot)
+        self.slider.middlePressOn = False
 
-    def valueChangedSlot(self, low, high):
-        self.valueChanged.emit(low, high)
+        self.addDataCallBack = None
+
+    def currentIndexChanged(self, now, before):
+        self.currentDataChanged.emit(*self.dataset[now.data()])
+
+    def dataChangedSlot(self, a, b):
+        self.dataset[a.data()] = self.dataset.pop(self.dataBeforeModify)
+
+    def rangeChangedSlot(self, low, high):
+        self.rangeChanged.emit(low, high)
         self.dataset[self.listview.currentIndex().data()] = [low, high]
 
     def addData(self, name):
         if name in self.dataset.keys():
             return
-        self.dataset[name] = [0,0]
+        self.dataset[name] = [self.slider._firstValue, self.slider._secondValue]
         self.listmodel.appendRow(QStandardItem(name))
+        self.currentDataChanged.emit(*self.dataset[name])
 
     def removeCurrentData(self):
         data = self.listview.currentIndex().data()
@@ -181,7 +188,7 @@ class OneDimLabelSlider(QWidget):
         pass
 
     def _doubleClickItem(self):
-        pass
+        self.dataBeforeModify = self.listview.currentIndex().data()
 
 
 def testMain():

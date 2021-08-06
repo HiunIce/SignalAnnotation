@@ -4,7 +4,9 @@ from PyQt5.QtWidgets import QWidget, QApplication
 from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QPen, QBrush, QFont
 
 
-# code from github, origin version is cpp#
+# code from github, origin version is cpp
+# changed it to pyqt, and slightly modified.
+
 class RangeSlider(QWidget):
     lowValueChanged = pyqtSignal(float)
     highValueChanged = pyqtSignal(float)
@@ -31,6 +33,7 @@ class RangeSlider(QWidget):
 
     def __init__(self, *args):
         super(QWidget, self).__init__(*args)
+        self.middlePressOn = False
         self.setMouseTracking(True)
 
     def mousePressEvent(self, a0: QMouseEvent) -> None:
@@ -38,9 +41,10 @@ class RangeSlider(QWidget):
             self._flag_secondHandlePressed = self._handleRect(self._secondValue).contains(a0.pos())
             self._flag_firstHandlePressed = not self._flag_secondHandlePressed and self._handleRect(
                 self._firstValue).contains(a0.pos())
-            self._flag_rangeHandlePressed = not (
-                        self._flag_firstHandlePressed or self._flag_secondHandlePressed) and self._rangeHandleRect().contains(
-                a0.pos())
+            self._flag_rangeHandlePressed = not (self._flag_firstHandlePressed \
+                                                 or self._flag_secondHandlePressed) \
+                                            and self._rangeHandleRect().contains(a0.pos()) \
+                                            and self.middlePressOn
 
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.LeftButton):
@@ -107,8 +111,8 @@ class RangeSlider(QWidget):
 
         if (self._flag_firstHandlePressed or self._flag_secondHandlePressed or self._flag_rangeHandlePressed):
             font = QFont()
-            w = int(100)
-            h = int(25)
+            w = 100
+            h = 25
             font.setFamily("Microsoft YaHei")
             font.setPixelSize(int(h * 0.7))
             painter.setFont(font)
@@ -120,7 +124,7 @@ class RangeSlider(QWidget):
     def _span(self):
         interval = abs(self._maximum - self._minimum)
 
-        if (self._flag_horizontal):
+        if self._flag_horizontal:
             return (self.width() - self._handleWidth) / (interval)
         else:
             return (self.height() - self._handleWidth) / (interval)
@@ -138,7 +142,7 @@ class RangeSlider(QWidget):
 
     def _handleRect(self, value):
         s = self._span()
-        if (self._flag_horizontal):
+        if self._flag_horizontal:
             r = QRectF(0, (self.height() - self._handleHeight) / 2, self._handleWidth, self._handleHeight)
             r.moveLeft(s * (value - self._minimum))
         else:
@@ -218,23 +222,9 @@ class RangeSlider(QWidget):
 
 if __name__ == "__main__":
     import sys
-
     app = QApplication(sys.argv)
-
     slider = RangeSlider()  # QtWidgets.QSlider()
-
-
     # TODO: fix handles' positioning while appearance is inverted
     # slider.setInvertedAppearance( True )
-
-    def echo(value):
-        print
-        value
-
-
-    # QtCore.QObject.connect(slider, QtCore.SIGNAL('sliderMoved(int)'), echo)
-    # QtCore.QObject.connect(slider, QtCore.SIGNAL('lowValueChanged(int)'), echo)
-    # QtCore.QObject.connect(slider, QtCore.SIGNAL('highValueChanged(int)'), echo)
-
     slider.show()
     sys.exit(app.exec_())
