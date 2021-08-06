@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/14.7.0/nouislider.css" rel="stylesheet">
+    <script type="text/javascript" src="canvasslider.js"></script>
+
+
+        <meta charset="utf-8">
+        <title>SignalAnnotation</title>
+
+        <script type="text/javascript">
+            var idx = 1;
+
+            function add(num) {
+                idx += num;
+                change_pic()
+            }   
+            function jump() {
+                var num = prompt("Please enter number");
+                if (!isNaN(num)){
+                    idx = num;
+                    change_pic();
+                }
+            }
+            function change_pic() {
+                document.getElementById('pic_img').src = `sig${(idx).toString()}.jpg`;
+                document.getElementById('idx').innerHTML  = idx;
+
+                setTimeout(function(){update_canv();}, 10);
+            }
+            function update_canv(){
+                var ctx = document.getElementById("pic").getContext("2d");
+                var img = document.getElementById("pic_img");
+                ctx.drawImage(img, 0,0);
+
+                console.log(data);
+                data.forEach(pair => {draw_line(pair[0]*5);draw_line(pair[1]*5);});
+            }
+            
+        </script>
+    </head>
+
+    <body>
+        <div>
+            <canvas id="pic" width="500" height="400" ></canvas>
+            <img id="pic_img" src="./sig1.jpg" hidden/> 
+        </div>
+        <div>
+            <button onclick="add(-1)">prev</button>
+            <button onclick="add(1)">next</button>
+            <button id="idx" onclick="jump(1)">1</button>
+            <button onclick="add_slide()">+</button>
+        </div>
+        <div id="canves"></div>
+        <canvas id="myCanvas1" width=500 height=80  title="slider 1" > </canvas>
+        
+        <br/>
+    </body>
+
+<script type="text/javascript">
+    var s_id = 0;
+    var data = [];
+    const START = 33;
+    const END = 67;
+
+    function add_slide() {
+        var node=document.createElement("canvas");
+        node.setAttribute("id", "myCanvas" + s_id);
+        node.setAttribute("height", 40);
+        node.setAttribute("height", 40);
+        node.style.display = "block";
+        document.getElementById('canves').appendChild(node);
+
+        const const_id = s_id;
+        var CS = new CanvasSlider({
+          canvas: `myCanvas${s_id}`,
+          range: {min: 0, max: 100, step: 1},
+          start: [START,END],
+          snapToTicks: false,
+          showLabels: false,
+          showMajorTicks: false,
+          showMinorTicks: false,
+          showToolTip: false,
+          onChange: function(n_id, val) { 
+            // console.log("onChange:", const_id, n, val);
+            data[const_id][n_id] = val;
+            update_canv();
+            // console.log(data);
+        },
+          format: {decimals: 0, prefix: "", suffix: "%"},
+          baseColor: {h: 207, s: 60, v: 100},
+          handle: {shape: "ellipse", w: 20, h: 20, hue: 136}
+
+        });
+        s_id += 1;
+        data.push([START,END]);
+
+    }
+    window.onload = function() {
+        var ctx = document.getElementById("pic").getContext("2d");
+        var img = document.getElementById("pic_img");
+        ctx.drawImage(img, 0,0);
+        
+
+        add_slide();
+    }
+
+    document.onkeyup = function(e) {
+        switch(e.which) {
+            case 37: // left
+            add(-1);break;
+            case 39: // right
+            add(1);break;
+        }
+        e.preventDefault();
+    }
+
+    function draw_line(x) {
+        var context = document.getElementById('pic').getContext("2d");
+        context.beginPath();
+        context.moveTo(x, 0);
+        context.lineTo(x, 400);
+        context.lineWidth = 5;
+        // set line color
+        context.strokeStyle = '#808000';
+        context.stroke();
+      
+  }
+  
+</script>
+
+</html>

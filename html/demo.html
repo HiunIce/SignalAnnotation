@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas Range Slider</title>
+
+    <script type="text/javascript" src="canvasslider.js"></script>
+</head>
+<!-- =========================================================================== -->
+<body>
+
+   <canvas id="myCanvas1" width=800 height=80  title="slider 1" > </canvas>
+   <canvas id="myCanvas2" width=800 height=80  title="slider 2" > </canvas>
+
+   <!-- TEST
+   <button onclick="CS1.setValue(0,-59)(1,-30);"> Set Val </button>   &nbsp; &nbsp;
+   <button onclick="testChanges()"> Test Changes </button>  <br/> <br/>
+   -->
+
+<!-- =========================================================================== -->
+<script>
+
+
+
+// Range examples:
+// a. [0, 170, 270, 370, 470]  // array of increasing values (floats of integers)
+// b. {min: -100, max: 300.7, step: 35}
+// c. {min: 500, max: 1200, count: 35}
+// d. {min: -100, max: 300.7}
+
+
+var CS1 = new CanvasSlider({
+  canvas: "myCanvas1",
+  range: {min: 0, max: 100, step: 1},
+  start: [0,50,60,100],
+  snapToTicks: false,
+  showLabels: true,
+  showMajorTicks: false,
+  showMinorTicks: false,
+  showToolTip: false,
+  onChange: function(i, val) { console.log("onChange A: ", i, val)},
+  format: {decimals: 0, prefix: "", suffix: "%"},
+  baseColor: {h: 207, s: 60, v: 100},
+  handle: {shape: "ellipse", w: 20, h: 20, hue: 136}
+
+});
+
+var CS2 = new CanvasSlider({
+  canvas: "myCanvas2",
+  range: {min: 0, max: 100, step: 1},
+  start: [0,50,60,100],
+  snapToTicks: false,
+  showLabels: true,
+  showMajorTicks: false,
+  showMinorTicks: false,
+  showToolTip: false,
+  onChange: function(i, val) { console.log("onChange A: ", i, val)},
+  format: {decimals: 0, prefix: "", suffix: "%"},
+  baseColor: {h: 207, s: 60, v: 100},
+  handle: {shape: "ellipse", w: 20, h: 20, hue: 136}
+
+});
+
+
+
+// ======================================================================================
+</script>
+
+
+</body>
+</html>
