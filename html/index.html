@@ -10,23 +10,43 @@
         <title>SignalAnnotation</title>
 
         <script type="text/javascript">
-            var idx = 1;
+            var pic_id = 1;
 
             function add(num) {
-                idx += num;
-                change_pic()
+                pic_exist(pic_id + num, exist => {
+                    if (exist) {
+                        pic_id += num;
+                        change_pic();
+                    }
+                });
             }   
             function jump() {
                 var num = prompt("Please enter number");
                 if (!isNaN(num)){
-                    idx = num;
-                    change_pic();
+                    pic_exist(num, exist => {
+                        if (exist) {
+                            pic_id = parseInt(num);
+                            change_pic();
+                        }
+                    });
                 }
             }
+            function init() {
+                document.getElementById('canves').innerHTML = '';
+                if (data[pic_id] === undefined){
+                    data[pic_id] = [[START,END]];
+                    console.log('init');
+                }
+                s_id = data[pic_id].length;
+                data[pic_id].forEach((pair, id) => {
+                    add_slide(pair[0], pair[1], id);
+                });
+                update_canv();
+            }
             function change_pic() {
-                document.getElementById('pic_img').src = `sig${(idx).toString()}.jpg`;
-                document.getElementById('idx').innerHTML  = idx;
-
+                init();
+                document.getElementById('pic_img').src = `${prefix}${(pic_id).toString()}${suffix}`;
+                document.getElementById('pic_id').innerHTML  = pic_id;
                 setTimeout(function(){update_canv();}, 10);
             }
             function update_canv(){
@@ -34,14 +54,36 @@
                 var img = document.getElementById("pic_img");
                 ctx.drawImage(img, 0,0);
 
-                console.log(data);
-                data.forEach(pair => {draw_line(pair[0]*5);draw_line(pair[1]*5);});
+                data[pic_id].forEach((pair, i) => {
+                    draw_line(pair[0]*5, i);
+                    draw_line(pair[1]*5, i);
+                });
+                localStorage.setItem("data", JSON.stringify(data));
             }
-            
+            function pic_exist(pic_id, callback) {
+                const img = new Image();
+                img.src = `${prefix}${(pic_id).toString()}${suffix}`;
+                if (img.complete) {
+                  callback(true);
+                } else {
+                  img.onload = () => {
+                    callback(true);
+                  };
+                  img.onerror = () => {
+                    callback(false);
+                  };
+                }
+            }
         </script>
     </head>
 
     <body>
+        <div>
+            <label for="prefix">prefix:</label>
+             <input type="text" id="prefix" value="sig" size="2" onchange="path_mod()">
+            <label for="suffix">suffix:</label>
+             <input type="text" id="suffix" value=".jpg" size="2" onchange="path_mod()">
+        </div>
         <div>
             <canvas id="pic" width="500" height="400" ></canvas>
             <img id="pic_img" src="./sig1.jpg" hidden/> 
@@ -49,34 +91,42 @@
         <div>
             <button onclick="add(-1)">prev</button>
             <button onclick="add(1)">next</button>
-            <button id="idx" onclick="jump(1)">1</button>
+            <button id="pic_id" onclick="jump(1)">1</button>
             <button onclick="add_slide()">+</button>
+            <button onclick="reset()">reset</button>
+            <button onclick="saveJsonObjToFile()">save</button>
         </div>
         <div id="canves"></div>
-        <canvas id="myCanvas1" width=500 height=80  title="slider 1" > </canvas>
-        
         <br/>
     </body>
 
 <script type="text/javascript">
     var s_id = 0;
-    var data = [];
+    var data_str = localStorage.getItem("data");
+    var data = (data_str==null) ? new Map() : JSON.parse(data_str);
     const START = 33;
     const END = 67;
+    var prefix = 'sig';
+    var suffix = '.jpg';
 
-    function add_slide() {
+    function path_mod() {
+        prefix = document.getElementById('prefix').value;
+        suffix = document.getElementById('suffix').value;
+    }
+
+    function add_slide(s = START, e = END, id = s_id) {
         var node=document.createElement("canvas");
-        node.setAttribute("id", "myCanvas" + s_id);
+        node.setAttribute("id", "myCanvas" + id);
         node.setAttribute("height", 40);
         node.setAttribute("height", 40);
         node.style.display = "block";
         document.getElementById('canves').appendChild(node);
 
-        const const_id = s_id;
+        const const_id = id;
         var CS = new CanvasSlider({
-          canvas: `myCanvas${s_id}`,
+          canvas: `myCanvas${id}`,
           range: {min: 0, max: 100, step: 1},
-          start: [START,END],
+          start: [s,e],
           snapToTicks: false,
           showLabels: false,
           showMajorTicks: false,
@@ -84,7 +134,7 @@
           showToolTip: false,
           onChange: function(n_id, val) { 
             // console.log("onChange:", const_id, n, val);
-            data[const_id][n_id] = val;
+            data[pic_id][const_id][n_id] = val;
             update_canv();
             // console.log(data);
         },
@@ -93,17 +143,18 @@
           handle: {shape: "ellipse", w: 20, h: 20, hue: 136}
 
         });
-        s_id += 1;
-        data.push([START,END]);
 
+        if (id == s_id) {
+            s_id += 1;
+            data[pic_id].push([START,END]);
+            update_canv();
+        }
     }
     window.onload = function() {
         var ctx = document.getElementById("pic").getContext("2d");
         var img = document.getElementById("pic_img");
         ctx.drawImage(img, 0,0);
-        
-
-        add_slide();
+        init();
     }
 
     document.onkeyup = function(e) {
@@ -116,17 +167,44 @@
         e.preventDefault();
     }
 
-    function draw_line(x) {
+    function draw_line(x, i) {
         var context = document.getElementById('pic').getContext("2d");
         context.beginPath();
         context.moveTo(x, 0);
         context.lineTo(x, 400);
-        context.lineWidth = 5;
-        // set line color
-        context.strokeStyle = '#808000';
+        context.lineWidth = 2;
+        context.strokeStyle = hslToHex((i*60)%255,100,40);
         context.stroke();
-      
   }
+
+    function reset(){
+        data[pic_id] = undefined;
+        init()
+    }
+    function saveJsonObjToFile() {
+        const text = JSON.stringify(data);
+        const name = "data.json";
+        const type = "text/plain";
+        const a = document.createElement("a");
+        const file = new Blob([text], { type: type });
+        a.href = URL.createObjectURL(file);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
+  //https://stackoverflow.com/questions/36721830/convert-hsl-to-rgb-and-hex
+    function hslToHex(h, s, l) {
+      l /= 100;
+      const a = s * Math.min(l, 1 - l) / 100;
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    }
   
 </script>
 
