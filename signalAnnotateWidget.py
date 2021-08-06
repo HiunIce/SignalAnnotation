@@ -74,6 +74,8 @@ class SignalAnnotateWidget(QWidget):
             print("you shall input a file")
             self.clearLine()
             return
+        if len(self.grabTools.dataset) != 0:
+            self.grabTools.saveData()
         if self.readFunction is None:
             def mat2nparray(path):
                 data = scio.loadmat(path)
@@ -81,6 +83,13 @@ class SignalAnnotateWidget(QWidget):
             self.readFunction = mat2nparray
         data = self.readFunction(path)
         self.setData(os.path.splitext(path)[0], data)
+        if os.path.isfile(path.replace(".mat", ".json")):
+            f = open(path.replace(".mat", ".json"))
+            data = f.read()
+            f.close()
+            data = json.loads(data)
+            self.grabTools.setDataset(data)
+
 
     def setData(self, name, data):
         self.target_name = name
@@ -88,6 +97,8 @@ class SignalAnnotateWidget(QWidget):
         #print('set data', self.target_name, self.target_data.shape)
         self.grabTools.savePath = name+".json"
         self.clearLine()
+        self.grabTools.listmodel.clear()
+        self.grabTools.dataset = dict()
         for i in range(self.target_data.shape[0]):
             self.plot(self.target_data[i], lw=0.3)
         min, max =  np.min(self.target_data), np.max(self.target_data)
@@ -200,7 +211,8 @@ class OneDimLabelSlider(QWidget):
 
     def rangeChangedSlot(self, low, high):
         self.rangeChanged.emit(low, high)
-        self.dataset[self.listview.currentIndex().data()] = [low, high]
+        if self.listview.currentIndex().data() in self.dataset:
+            self.dataset[self.listview.currentIndex().data()] = [low, high]
 
     def addData(self, name):
         if name in self.dataset.keys():
@@ -219,6 +231,7 @@ class OneDimLabelSlider(QWidget):
         f = open(self.savePath, "w")
         f.write(jd)
         f.close()
+        print(self.dataset)
         print("save data")
 
 
@@ -234,6 +247,11 @@ class OneDimLabelSlider(QWidget):
         self.listview.setGeometry(0,self.slider.y()+self.slider.height(),
                                   self.width(), self.height()-ih)
 
+    def setDataset(self, data):
+        self.dataset = data
+        for k in self.dataset.keys():
+            self.listmodel.appendRow(QStandardItem(k))
+        self.listview.setCurrentIndex(self.listmodel.index(0, 0))
 
     def paintEvent(self, a0) -> None:
         pass

@@ -1,8 +1,8 @@
 import time
 
 from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QListView, QAbstractItemView, QGraphicsDropShadowEffect
-from PyQt5.QtCore import QRect, pyqtSignal, Qt
-from PyQt5.QtGui import QPaintEvent, QIcon, QStandardItemModel, QStandardItem, QPainter, QColor
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QPaintEvent, QIcon, QStandardItemModel, QStandardItem
 
 
 class SelectDrawer(QWidget):
@@ -40,8 +40,7 @@ class SelectDrawer(QWidget):
         self.listmodel.clear()
         for d in data:
             self.listmodel.appendRow(QStandardItem(d))
-        self.listview.setCurrentIndex(self.listmodel.index(0,0))
-        #self.dataSelected.emit(self.listview.currentIndex().data())
+        self.listview.setCurrentIndex(self.listmodel.index(0, 0))
 
     def nextItem(self):
         idx = self.listview.currentIndex().row()+1
@@ -56,7 +55,6 @@ class SelectDrawer(QWidget):
         self.listview.setCurrentIndex(self.listmodel.index(idx, 0))
 
     def currentIndexChanged(self, now, before):
-
         self.dataSelected.emit(self.listview.currentIndex().data())
 
     def leaveEvent(self, a0) -> None:
