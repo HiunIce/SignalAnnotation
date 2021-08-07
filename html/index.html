@@ -17,6 +17,9 @@
                     if (exist) {
                         pic_id += num;
                         change_pic();
+                    } else {
+                        const file = `${conf['prefix']}${(pic_id + num).toString()}${conf['suffix']}`;
+                        alert(file + ' not found.');
                     }
                 });
             }   
@@ -27,6 +30,9 @@
                         if (exist) {
                             pic_id = parseInt(num);
                             change_pic();
+                        } else {
+                            const file = `${conf['prefix']}${(num).toString()}${conf['suffix']}`;
+                            alert(file + ' not found.');
                         }
                     });
                 }
@@ -54,13 +60,19 @@
                 ctx.beginPath();
                 var img = document.getElementById("pic_img");
 
-                const x = parseInt(conf['offset_x']), y = parseInt(conf['offset_y']), l = parseInt(conf['rescale_x']), h = parseInt(conf['rescale_y']);
-                ctx.drawImage(img, parseInt(x) - (l-500)/2, y - (h-400)/2, l, h);
+                const x = parseInt(conf['offset_x']);
+                const y = parseInt(conf['offset_y']);
+                const l = parseInt(conf['rescale_x']) * LENGTH / 100;
+                const h = parseInt(conf['rescale_y']) * HEIGHT / 100;
+
+                ctx.drawImage(img, parseInt(x) - (l-LENGTH)/2, y - (h-HEIGHT)/2, l, h);
                 data[pic_id].forEach((pair, i) => {
                     draw_line(pair[0]*5, i);
                     draw_line(pair[1]*5, i);
+                    draw_rec(pair[0]*5, pair[1]*5, i)
                 });
                 localStorage.setItem("data", JSON.stringify(data));
+                localStorage.setItem("conf", JSON.stringify(conf));
             }
             function pic_exist(pic_id, callback) {
                 const img = new Image();
@@ -82,34 +94,35 @@
     <body>
         <div>
             <label for="prefix">prefix:</label>
-             <input type="text" id="prefix" value="sig" size="2" onchange="config(this.id)">
+             <input type="text" name="prefix" size="2" onchange="config(this.name, this.value)">
             <label for="suffix">suffix:</label>
-             <input type="text" id="suffix" value=".jpg" size="2" onchange="config(this.id)">
+             <input type="text" name="suffix" size="2" onchange="config(this.name, this.value)">
+             <button onclick="reset_conf()">reset</button>
         </div>
         <div>
             <label>offset:</label>
-             <!-- <input type="text" id="offset_x" value="0" size="1" onchange="config(this.id)">
-             <input type="text" id="offset_y" value="0" size="1" onchange="config(this.id)">  -->
-             <input type="range" id="offset_x" value="0" min="-100" max="100" onchange="config(this.id)" oninput="config(this.id)">
-             <input type="range" id="offset_y" value="0" min="-100" max="100" onchange="config(this.id)" oninput="config(this.id)">
+             <input type="range" name="offset_x" min="-100" max="100" onchange="config(this.name, this.value)" oninput="config(this.name, this.value)">
+             <input type="text" name="offset_x" size="1" onchange="config(this.name, this.value)">
+             <input type="range" name="offset_y" min="-100" max="100" onchange="config(this.name, this.value)" oninput="config(this.name, this.value)">
+             <input type="text" name="offset_y" size="1" onchange="config(this.name, this.value)">
          </div>
          <div>
             <label>rescale:</label>
-             <!-- <input type="text" id="rescale_x" value="500" size="1" onchange="config(this.id)">
-             <input type="text" id="rescale_y" value="400" size="1" onchange="config(this.id)"> -->
-              <input type="range" id="rescale_x" value="500" min="250" max="1000" onchange="config(this.id)" oninput="config(this.id)">
-             <input type="range" id="rescale_y" value="400" min="200" max="800" onchange="config(this.id)" oninput="config(this.id)">
+              <input type="range" name="rescale_x" min="50" max="200" onchange="config(this.name, this.value)" oninput="config(this.name, this.value)">
+               <input type="text" name="rescale_x" size="1" onchange="config(this.name, this.value)">
+             <input type="range" name="rescale_y" min="50" max="200" onchange="config(this.name, this.value)" oninput="config(this.name, this.value)">
+           <input type="text" name="rescale_y" size="1" onchange="config(this.name, this.value)">
         </div>
         <div>
             <canvas id="pic" width="500" height="400" ></canvas>
             <img id="pic_img" src="./sig1.jpg" hidden/> 
         </div>
         <div>
-            <button onclick="add(-1)">prev</button>
-            <button onclick="add(1)">next</button>
+            <button onclick="add(-1)"><</button>
             <button id="pic_id" onclick="jump(1)">1</button>
+            <button onclick="add(1)">></button>&emsp;&emsp;
             <button onclick="add_slide()">+</button>
-            <button onclick="reset()">reset</button>
+            <button onclick="reset()">reset</button>&emsp;&emsp;
             <button onclick="saveJsonObjToFile()">save</button>
         </div>
         <div id="canves"></div>
@@ -124,21 +137,27 @@
     var conf = (conf_str==null) ? new Map() : JSON.parse(conf_str);
     const START = 33;
     const END = 67;
+    var LENGTH = 500;
+    var HEIGHT = 400;
     
 
-    function config(k) {
-        conf[k] = document.getElementById(k).value;
-        localStorage.setItem("conf", JSON.stringify(conf));
+    function config(k, v) {
+        conf[k] = v;
+        load_conf();
         update_canv();
     } 
     function load_conf() {
         if (conf.size === 0){
-            ['prefix', 'suffix', 'offset_x', 'offset_y', 'rescale_x', 'rescale_y'].forEach(k => {
-                conf[k] = document.getElementById(k).value;
-            })
-        } else {
-            for(var k in conf) {
-                document.getElementById(k).value = conf[k];
+            conf["prefix"]= "sig"; 
+            conf["suffix"] = ".jpg";
+            conf["offset_x"] = 0;
+            conf["offset_y"] = 0;
+            conf["rescale_x"] = 100;
+            conf["rescale_y"] = 100;
+        } 
+        for(var k in conf) {
+            for (ele of document.getElementsByName(k)){
+                ele.value = conf[k];
             }
         }
     }
@@ -200,15 +219,29 @@
         var context = document.getElementById('pic').getContext("2d");
         context.beginPath();
         context.moveTo(x, 0);
-        context.lineTo(x, 400);
+        context.lineTo(x, HEIGHT);
         context.lineWidth = 2;
         context.strokeStyle = hslToHex((i*60)%255,100,40);
         context.stroke();
   }
 
+    function draw_rec(x1, x2, i) {
+        var ctx = document.getElementById('pic').getContext("2d");
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(${hslToRgb((i*60)%255,100,100).join(',')},0.2)`;
+        ctx.fillRect(x1, 0, x2-x1, HEIGHT);
+        ctx.fill();
+        ctx.beginPath();
+  }
+
     function reset(){
         data[pic_id] = undefined;
         init()
+    }
+    function reset_conf() {
+        conf = new Map();
+        load_conf();
+        update_canv();
     }
     function saveJsonObjToFile() {
         const text = JSON.stringify(data);
@@ -233,6 +266,34 @@
         return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
       };
       return `#${f(0)}${f(8)}${f(4)}`;
+    }
+    //https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
+    function hslToRgb(h, s, l){
+        h = h / 255;
+        s = s / 255;
+        l = l / 255;
+
+        var r, g, b;
+
+        if(s == 0){
+            r = g = b = l; // achromatic
+        }else{
+            var hue2rgb = function hue2rgb(p, q, t){
+                if(t < 0) t += 1;
+                if(t > 1) t -= 1;
+                if(t < 1/6) return p + (q - p) * 6 * t;
+                if(t < 1/2) return q;
+                if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            }
+
+            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            var p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
     }
   
 </script>
