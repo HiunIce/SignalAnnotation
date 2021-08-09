@@ -204,7 +204,12 @@ class OneDimLabelSlider(QWidget):
         self.listview.selectionModel().currentChanged.connect(self.currentIndexChanged)
 
     def currentIndexChanged(self, now, before):
-        self.currentDataChanged.emit(*self.dataset[now.data()])
+        self.slider.blockSignals(True)
+        data = self.dataset[now.data()]
+        self.slider.setFirstValue(data[0])
+        self.slider.setSecondValue(data[1])
+        self.slider.blockSignals(False)
+        self.currentDataChanged.emit(*data)
 
     def dataChangedSlot(self, a, b):
         self.dataset[a.data()] = self.dataset.pop(self.dataBeforeModify)
